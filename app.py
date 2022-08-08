@@ -8,8 +8,6 @@ from math import ceil
 
 #Create a Flask Instance
 app = Flask(__name__)
-#Add Databse
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://'
 
 #Initialize The Database
 conn = pymysql.connect(host='localhost',
@@ -22,15 +20,21 @@ conn = pymysql.connect(host='localhost',
 #Secrete Key
 app.config['SECRET_KEY'] = "ykcisstupid"
         
-#Create a Form Class
-#class NamerForm(FlaskForm):
-#    name = StringField("What's your name", validators=[DataRequired()])
-#    submit = SubmitField("Submit")
 '''----------------------------------------------------------------------------------------------------'''
 
 @app.route('/', methods=['GET'])
 def index():
     flash("Welcome to the Online Booking System!")
+    today = datetime.now().replace(microsecond=0)
+    default_view_date = today + relativedelta(days=+7)
+
+    query = '''SELECT DISTINCT airline_name, flight_num, departure_time , arrival_time, departure_airport, arrival_airport, status \
+                FROM flight WHERE departure_time > '{}' AND departure_time <= '{}' '''.format(today,default_view_date)
+    cursor = conn.cursor()
+    cursor.execute(query)    
+    default_view_result = cursor.fetchall()
+    if default_view_result:
+        return render_template('index.html',default_view_result = default_view_result)
     return render_template("index.html")
     
 
@@ -48,7 +52,6 @@ def public_info_search():
     flight_num = request.form.get('flight_num')
     arrival_date = request.form.get('arrival_date')
     
-
     # check for search type
     if departure_airport:
         if not departure_date:
@@ -160,7 +163,7 @@ def public_info_search():
                 error = 'No such flight exists'
                 return render_template('index.html', error3=error)
             return render_template('index.html', search3=result)
-
+    
          
         
 '''----------------------------------------------------------------------------------------------------'''
@@ -582,6 +585,7 @@ def Customer_purchase_ticket():
         cursor = conn.cursor()
         cursor.execute(condition_query)    
         condition_result = cursor.fetchone()
+
         if condition_result is None:
             condition_num = 0
         elif condition_result.get('ticket_bought') < 5:
@@ -618,7 +622,6 @@ def Customer_purchase_ticket():
                 return render_template('Customer_purchase_ticket.html', status = 'customer',flight_confirm = result)
             else:
                 session['sold_out_message'] = True
-       
                 session.pop('purchase_airline_name')
                 session.pop('purchase_flight_number')
                 return redirect(url_for('Customer_home'))
@@ -654,10 +657,18 @@ def Customer_purchase_success():
         cursor = conn.cursor()
         cursor.execute(condition_query)    
         condition_result = cursor.fetchone()
+
+        ticket_left_query = '''SELECT A.seats AS remaining_seats FROM airplane AS A, flight as F \
+                    WHERE F.airline_name = '{}' AND F.flight_num = {} AND F.airplane_id = A.airplane_id\
+                        '''.format(airline_name,flight_num)
+        cursor = conn.cursor()
+        cursor.execute(ticket_left_query)    
+        ticket_left_result= cursor.fetchone()
+        ticket_left = int(ticket_left_result.get('remaining_seats'))
         
         if condition_result is None:
             condition_num = 0
-        elif condition_result.get('ticket_bought') + int(ticket_num) <= 5:
+        elif condition_result.get('ticket_bought') + int(ticket_num) <= 5 and int(ticket_num) <= ticket_left:
             condition_num = 0
         else:
             condition_num = 1
@@ -786,7 +797,6 @@ def Agent_home():
         if 'no_permit_message' in session:
             session.pop('no_permit_message')
             return render_template('Agent_home.html', username = username, status = 'agent', no_permit_message= True, default_agent_view = view_my_flight_result, airline_name = purchase_airline_name)
-
 
         if purchase_flight_number and purchase_airline_name:
             session['purchase_flight_number'] = purchase_flight_number
@@ -1006,11 +1016,19 @@ def Agent_purchase_success():
         cursor = conn.cursor()
         cursor.execute(condition_query1)    
         condition_result1 = cursor.fetchone()
+        ticket_left_query = '''SELECT A.seats AS remaining_seats FROM airplane AS A, flight as F \
+                    WHERE F.airline_name = '{}' AND F.flight_num = {} AND F.airplane_id = A.airplane_id\
+                        '''.format(airline_name,flight_num)
+        cursor = conn.cursor()
+        cursor.execute(ticket_left_query)    
+        ticket_left_result= cursor.fetchone()
+        ticket_left = int(ticket_left_result.get('remaining_seats'))
         
         if condition_result1 is None:
             condition_num = 0
-        elif condition_result1.get('ticket_bought') + int(ticket_num) <= 5:
+        elif condition_result1.get('ticket_bought') + int(ticket_num) <= 5 and ticket_left >= int(ticket_num):
             condition_num = 0
+        
         else:
             condition_num = 1
         
@@ -1142,8 +1160,8 @@ def View_top_customers():
             chart1_values.append(0)
     else:
         chart1_values = chart1_values[:4]
-    print(chart1_labels)
-    print(chart1_values)
+    #print(chart1_labels)
+    #print(chart1_values)
 
     #query Top five customer with commissions
     query ='''SELECT purchases.customer_email, SUM(flight.price) FROM purchases NATURAL JOIN ticket NATURAL JOIN flight, booking_agent
@@ -1165,8 +1183,8 @@ def View_top_customers():
             chart2_values.append(0)
     else:
         chart2_values = chart2_values[:4]
-    print(chart2_labels)
-    print(chart2_values)  
+    #print(chart2_labels)
+    #print(chart2_values)  
 
     conn.commit()
     cursor.close()
@@ -1195,18 +1213,21 @@ def Staff_home():
         staff_airline_name = session['airline_name']
         query = '''SELECT permission_type FROM airline_staff NATURAL JOIN permission WHERE username = '{}' '''.format(session['staff'])
         cursor.execute(query)
-        data = cursor.fetchall()    
+        data = cursor.fetchall()
+#        print(data)
+        session['Admin'] = False
+        session['Operator'] = False
         for row in data:
-            if 'Admin' in row:
+ 
+            if row['permission_type'] == 'Admin':
                 session['Admin'] = True
-            else:
-                session['Admin'] = False
-            if 'Operator' in row:
+            if row['permission_type'] == 'Operator':
                 session['Operator'] = True
-            else:
-                session['Operator'] = False
+#        print(session)
         conn.commit()
         cursor.close()
+
+
         start_date = request.form.get('start_date')
         end_date = request.form.get('end_date')
         detail_airline_name = request.form.get('detail_airline_name')
@@ -1278,7 +1299,7 @@ def Staff_add_airplane():
                 if int(airplane_id) == int(lines['airplane_id']):
                     message = "Airplane ID already in system, please use a new airplane ID!"
                     return render_template('Staff_add_airplane.html', username = username, status = 'staff', airline_name = session['airline_name'], \
-                        error_duplicate = message)
+                        error_duplicate = message, Admin_permission = session['Admin'])
 
             query = '''INSERT INTO airplane VALUES ('{}',{},{}) '''.format(session['airline_name'],airplane_id,seats)
             cursor = conn.cursor()
@@ -1287,8 +1308,8 @@ def Staff_add_airplane():
             cursor.close()
             message = "Successfully add plane {} with capacity of {} to system!".format(airplane_id,seats)
             return render_template('Staff_add_airplane.html', username = username, status = 'staff', airline_name = session['airline_name'], \
-                add_success_message = message)
-        return render_template('Staff_add_airplane.html', username = username, status = 'staff', airline_name = session['airline_name'])
+                add_success_message = message, Admin_permission = session['Admin'])
+        return render_template('Staff_add_airplane.html', username = username, status = 'staff', airline_name = session['airline_name'], Admin_permission = session['Admin'])
     else:
         return redirect(url_for('index'))
 
@@ -1307,7 +1328,7 @@ def Staff_add_airport():
                 if airport_name == lines['airport_name']:
                     message = "Airport Name already in system, please use a new airport name!"
                     return render_template('Staff_add_airport.html', username = username, status = 'staff', airline_name = session['airline_name'], \
-                        error_duplicate = message)
+                        error_duplicate = message, Admin_permission = session['Admin'])
 
             query = '''INSERT INTO airport VALUES ('{}','{}') '''.format(airport_name,airport_city)
             cursor = conn.cursor()
@@ -1316,8 +1337,8 @@ def Staff_add_airport():
             cursor.close()
             message = "Successfully add airport {} located at {} to system!".format(airport_name,airport_city)
             return render_template('Staff_add_airport.html', username = username, status = 'staff', airline_name = session['airline_name'], \
-                add_success_message = message)
-        return render_template('Staff_add_airport.html', username = username, status = 'staff', airline_name = session['airline_name'])
+                add_success_message = message, Admin_permission = session['Admin'])
+        return render_template('Staff_add_airport.html', username = username, status = 'staff', airline_name = session['airline_name'], Admin_permission = session['Admin'])
     else:
         return redirect(url_for('index'))
 
@@ -1332,14 +1353,14 @@ def Staff_create_flight():
         status = request.form.get('status')
         airlane_id = request.form.get('airplane_id')
         price = request.form.get('price')
-        departure_time = request.form.get('departure_time')+':00'
-        arrival_time = request.form.get('arrival_time')+':00'
-        departure_time = departure_time.replace('T',' ')
-        arrival_time = arrival_time.replace('T',' ')
-
-        print(departure_time)
-        test_time = datetime.strptime('2020-04-04 05:05:00', '%Y-%m-%d %H:%M:%S')
-        print(test_time)
+        departure_time = request.form.get('departure_time')
+        arrival_time = request.form.get('arrival_time')
+        if departure_time:
+            departure_time = departure_time+':00'
+            departure_time = departure_time.replace('T',' ')
+        if arrival_time:
+            arrival_time = arrival_time+':00' 
+            arrival_time = arrival_time.replace('T',' ')
 
         if airline_name and flight_num:
             arrival_time_py = datetime.strptime(arrival_time, '%Y-%m-%d %H:%M:%S')
@@ -1347,11 +1368,11 @@ def Staff_create_flight():
             if arrival_time_py <= departure_time_py:
                 message = "Departure time later than arrival time! Please re-enter."
                 return render_template('Staff_create_flight.html', username = username, status = 'staff', airline_name = airline_name, \
-                        error = message)
+                        error = message, Admin_permission = session['Admin'])
             if departure_time_py <= datetime.now().replace(microsecond=0):
                 message = "Departure time earlier than right now! Please re-enter."
                 return render_template('Staff_create_flight.html', username = username, status = 'staff', airline_name = airline_name, \
-                        error = message)
+                        error = message, Admin_permission = session['Admin'])
             query = '''SELECT airport_name FROM airport'''
             cursor = conn.cursor()
             cursor.execute(query)
@@ -1366,11 +1387,11 @@ def Staff_create_flight():
             if dept_ap_exist == False:
                 message = "Departure Airport does not exist, try another!"
                 return render_template('Staff_create_flight.html', username = username, status = 'staff', airline_name = airline_name, \
-                        error = message)
+                        error = message, Admin_permission = session['Admin'])
             if arrl_ap_exist == False:
                 message = "Departure Airport does not exist, try another!"
                 return render_template('Staff_create_flight.html', username = username, status = 'staff', airline_name = airline_name, \
-                        error = message)
+                        error = message, Admin_permission = session['Admin'])
             query = '''SELECT * FROM flight'''
             cursor = conn.cursor()
             cursor.execute(query)    
@@ -1379,7 +1400,7 @@ def Staff_create_flight():
                 if airline_name == lines['airline_name'] and int(flight_num) == int(lines['flight_num']):
                     message = "Flight number already in system, please use a new flight number!"
                     return render_template('Staff_create_flight.html', username = username, status = 'staff', airline_name = session['airline_name'], \
-                        error = message)
+                        error = message, Admin_permission = session['Admin'])
                 temp_dept_time = lines['departure_time']
                 temp_arrl_time = lines['arrival_time']
                 if (departure_time_py >= temp_dept_time and departure_time_py <= temp_arrl_time) or (arrival_time_py >= temp_dept_time and arrival_time_py <= temp_arrl_time):
@@ -1387,7 +1408,7 @@ def Staff_create_flight():
                 if airlane_id == lines['airplane_id'] and time_coincide:
                     message = "Airplane with ID {} already occupied in the time slot!".format(airlane_id)
                     return render_template('Staff_create_flight.html', username = username, status = 'staff', airline_name = session['airline_name'], \
-                        error = message)
+                        error = message, Admin_permission = session['Admin'])
 
             query = '''INSERT INTO flight VALUES ('{}',{},'{}','{}','{}','{}',{},'{}',{} ) '''.format(airline_name,int(flight_num),departure_airport, \
                     departure_time, arrival_airport,arrival_time,Decimal(price),status, int(airlane_id))
@@ -1397,8 +1418,9 @@ def Staff_create_flight():
             cursor.close()
             message = "Successfully add flight number {} to system!".format(flight_num)
             return render_template('Staff_create_flight.html', username = username, status = 'staff', airline_name = airline_name, \
-                create_success_message = message)
-        return render_template('Staff_create_flight.html', username = username, status = 'staff', airline_name = airline_name)
+                create_success_message = message, Admin_permission = session['Admin'])
+
+        return render_template('Staff_create_flight.html', username = username, status = 'staff', airline_name = airline_name, Admin_permission = session['Admin'])
     else:
         return redirect(url_for('index'))
     
@@ -1423,7 +1445,7 @@ def Staff_change_status():
             if flight_exist == False:
                 message = "Flight does not exist, Please confirm and re-enter!"
                 return render_template('Staff_change_status.html', username = username, status = 'staff', airline_name = airline_name, \
-                error = message)
+                error = message, Opterator_permission = session['Operator'])
             query = '''UPDATE flight SET status = '{}' WHERE flight_num = {} AND airline_name = '{}' '''.format(status,flight_num,airline_name)
             cursor = conn.cursor()
             cursor.execute(query)
@@ -1431,8 +1453,8 @@ def Staff_change_status():
             cursor.close()
             message = "Successfully changed status of flight number {} to '{}'!".format(flight_num,status)
             return render_template('Staff_change_status.html', username = username, status = 'staff', airline_name = airline_name, \
-                change_success_message = message)
-        return render_template('Staff_change_status.html', username = username, status = 'staff', airline_name = airline_name)
+                change_success_message = message, Operator_permission = session['Operator'])
+        return render_template('Staff_change_status.html', username = username, status = 'staff', airline_name = airline_name, Operator_permission = session['Operator'])
     else:
         return redirect(url_for('index'))
 
@@ -1452,7 +1474,7 @@ def View_top_agent():
                 GROUP BY booking_agent.email'''.format(last_month, session['airline_name'])
         cursor.execute(query)
         data = cursor.fetchall()
-        print(data)
+        #print(data)
         #Select Top 5
         data = sorted(data, key=lambda x: x["COUNT(purchases.ticket_id)"], reverse=True)
         chart1_labels = [row['email'] for row in data]
@@ -1467,8 +1489,8 @@ def View_top_agent():
                 chart1_values.append(0)
         else:
             chart1_values = chart1_values[:4]
-        print(chart1_labels)
-        print(chart1_values)
+        #print(chart1_labels)
+        #print(chart1_values)
 
         #query Top five agent with number of tickets last year
         query ='''SELECT booking_agent.email, COUNT(purchases.ticket_id) FROM purchases, booking_agent, booking_agent_work_for
@@ -1491,8 +1513,8 @@ def View_top_agent():
                 chart2_values.append(0)
         else:
             chart2_values = chart2_values[:4]
-        print(chart2_labels)
-        print(chart2_values)
+        #print(chart2_labels)
+        #print(chart2_values)
 
         #query Top five agent with commissions
         query ='''SELECT booking_agent.email, SUM(flight.price) FROM purchases NATURAL JOIN ticket NATURAL JOIN flight, booking_agent NATURAL JOIN booking_agent_work_for
@@ -1514,8 +1536,8 @@ def View_top_agent():
                 chart3_values.append(0)
         else:
             chart3_values = chart3_values[:4]
-        print(chart3_labels)
-        print(chart3_values)    
+        #print(chart3_labels)
+        #print(chart3_values)    
         conn.commit()
         cursor.close()
 
@@ -1549,7 +1571,7 @@ def View_customers():
                     HAVING COUNT(ticket_id)>=all(SELECT COUNT(ticket_id) FROM purchases NATURAL JOIN ticket NATURAL JOIN flight 
                     WHERE airline_name = '{}' AND purchases.purchase_date >= '{}'
                     GROUP BY customer_email)'''.format(airline_name,start_date,airline_name,start_date)
-            print(query)
+            #print(query)
             cursor = conn.cursor()
             cursor.execute(query)    
             result = cursor.fetchone()
@@ -1600,7 +1622,7 @@ def View_report():
             else:
                 diff = (int(end_date.year)-int(start_date.year)-1)*12 + (12-int(start_date.month)+int(end_date.month))
             default = diff + 1
-            print(default)
+            #print(default)
 
         #Data process
         cursor = conn.cursor()
@@ -1608,13 +1630,13 @@ def View_report():
             month = (end_date + relativedelta(months=-(default-i-1))).month
             year = (end_date + relativedelta(months=-(default-i-1))).year
             labels.append(str(year)+'-'+str(month))
-            print(labels)
+            #print(labels)
             query = '''SELECT COUNT(ticket_id) FROM ticket NATURAL JOIN purchases WHERE airline_name = '{}' AND MONTH(purchase_date) = '{}' And YEAR(purchase_date) = '{}' '''.format(session['airline_name'], month, year)
             cursor.execute(query)
             data = cursor.fetchone()
-            print(data)
+            #print(data)
             values.append(data['COUNT(ticket_id)'])
-            print(values)
+            #print(values)
 
         conn.commit()
         cursor.close()
@@ -1644,7 +1666,7 @@ def Comparison_of_Revenue():
     cursor.execute(query)
     data = cursor.fetchone()
     chart1_values.append(int(data['SUM(price)']))
-    print(chart1_values)
+    #print(chart1_values)
 
     #Query total revenue of last year
     cursor = conn.cursor()
@@ -1659,7 +1681,7 @@ def Comparison_of_Revenue():
     cursor.execute(query)
     data = cursor.fetchone()
     chart2_values.append(int(data['SUM(price)']))
-    print(chart2_values)
+    #print(chart2_values)
     conn.commit()
     cursor.close()
 
@@ -1687,7 +1709,7 @@ def View_top_destination():
         top3_monthly = [row['airport_name'] for row in data]
         for i in range(3-len(data)):
             top3_monthly.append(None)
-    print(top3_monthly)
+    #print(top3_monthly)
 
     #Query Top 3 destination last year
     cursor = conn.cursor()
@@ -1703,7 +1725,7 @@ def View_top_destination():
         top3_annually = [row['airport_name'] for row in data]
         for i in range(3-len(data)):
             top3_annually.append(None)
-    print(top3_annually)
+    #print(top3_annually)
 
     return render_template('Staff_view_top_destination.html', status='staff', airline_name = session['airline_name'],
     top3_monthly = top3_monthly, top3_annually = top3_annually)
@@ -1753,6 +1775,8 @@ def Grant_new_permissions():
 
         conn.commit()
         cursor.close()
+        return render_template('Staff_Grant_new_permissions_success.html', status='staff', airline_name = session['airline_name'], 
+        Admin_permission = session['Admin'] )
 
     return render_template('Staff_Grant_new_permissions.html', status='staff', airline_name = session['airline_name'], 
     Admin_permission = session['Admin'] )
@@ -1762,14 +1786,14 @@ def Add_booking_agent():
     email = request.form.get('email')
 
     if request.method == "POST":
-        print(email)
+        #print(email)
         cursor = conn.cursor()
         query='''SELECT * FROM booking_agent WHERE email = '{}' '''.format(email)
         cursor.execute(query)
         data = cursor.fetchone()
         #Check if the agent exist
         if (data):
-            query='''SELECT * FROM booking_agent_work_for WHERE email = '{}' '''.format(email)
+            query='''SELECT * FROM booking_agent_work_for WHERE email = '{}' AND airline_name = '{}' '''.format(email,session['airline_name'])
             cursor.execute(query)
             data = cursor.fetchone()
             #Check if the agent is authorized
@@ -1788,9 +1812,23 @@ def Add_booking_agent():
 
         conn.commit()
         cursor.close()
+        return render_template('Staff_Add_booking_agent_success.html', status='staff', airline_name = session['airline_name'], 
+        Admin_permission = session['Admin'] )
 
     return render_template('Staff_Add_booking_agent.html', status='staff', airline_name = session['airline_name'], 
     Admin_permission = session['Admin'] )
+
+
+'''----------------------------------------------------------------------------------------------------'''
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'),404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('500.html'),500
 
 
 '''----------------------------------------------------------------------------------------------------'''

@@ -11,8 +11,43 @@
 
 {% endfor %}
 
+<section>
+{% if default_view_result %}
+
+<h4 style='margin-bottom: 10px; margin-top: 10px;'>Flights departs in next 7 days:</h4>
+		<table class="table table-striped">
+			<thead>
+			<tr>
+				<th scope="col">Airline Name</th>
+				<th scope="col">Flight Number</th>
+				<th scope="col">Departure Airport</th>
+				<th scope="col">Arrival Airport</th>
+				<th scope="col">Departure Time</th>	
+				<th scope="col">Arrival Time</th>
+				<th scope="col">Status</th>
+			</tr>
+			</thead>
+			<tbody>
+				{% for line in default_view_result %}
+				<tr>
+					<td>{{line['airline_name']}}</td>
+					<td>{{line['flight_num']}}</td>
+					<td>{{line['departure_airport']}}</td>
+					<td>{{line['arrival_airport']}}</td>
+					<td>{{line['departure_time']}}</td>
+					<td>{{line['arrival_time']}}</td>
+					<td>{{line['status']}}</td>
+				</tr>
+			{% endfor %}
+			</tbody>
+		</table>
+{% endif %}
+
+</section>
+<hr style="height:3px;border-width:1px;color:black;background-color:black">
+<section>
 	<!-- airport search -->
-	<h3 style='margin-bottom: 10px; margin-top: 10px;'>Search by airport</h2>
+	<h4 style='margin-bottom: 10px; margin-top: 10px;'>Search by airport</h4>
 		<form action="/" method="POST" class="row g-3">
 			<div class="col-md-6">
 				<input type="text" name = "departure_airport" class="form-control" placeholder="Departure Airport" required>
@@ -29,7 +64,7 @@
 				<input type="date" name = "return_date" class="form-control">
 			</div>
 			<div class="col-12">
-			  <button type="submit" class="btn btn-primary" value = Search>Search</button>
+			  <button type="submit" class="btn btn-primary" value = Search><i class="bi bi-search" style="font-size: 1rem; color: white;"></i></button>
 			</div>
 			<div></div>
 		  </form>
@@ -37,9 +72,9 @@
 			<p class="error"><strong>Error:</strong> {{error1}}</p>
 		{% endif %}
 	</form>
-
+	<hr style="height:3px;border-width:1px;color:black;background-color:black">
 	<!-- city search -->
-	<h3 style='margin-bottom: 10px; margin-top: 10px;'>Search by city</h2>
+	<h4 style='margin-bottom: 10px; margin-top: 10px;'>Search by city</h4>
 		<form action="/" method="POST" class="row g-3">
 			<div class="col-md-6">
 				<input type="text" name = "departure_city" class="form-control" placeholder="Departure City" required>
@@ -56,7 +91,7 @@
 				<input type="date" name = "return_date" class="form-control">
 			</div>
 			<div class="col-12">
-			  <button type="submit" class="btn btn-primary" value = Search>Search</button>
+			  <button type="submit" class="btn btn-primary" value = Search><i class="bi bi-search" style="font-size: 1rem; color: white;"></i></button>
 			</div>
 			<div></div>
 		  </form>
@@ -65,9 +100,13 @@
 		{% endif %}
 	</form>
 
+</section>
+
+<section>
 	<!-- desplay search result -->
 	{% if search1 %}
-	<h3 style='margin-bottom: 10px; margin-top: 10px;'>Search result</h3>
+	<hr style="height:3px;border-width:1px;color:black;background-color:black">
+	<h4 style='margin-bottom: 10px; margin-top: 10px;'>Search result</h4>
 	<table class="table table-striped">
 		<thead>
 		  <tr>
@@ -98,6 +137,7 @@
 
 	<!-- desplay search result -->
 	{% if search2 %}
+	<hr style="height:3px;border-width:1px;color:black;background-color:black">
 	<table class="table table-striped">
 		<thead>
 		  <tr>
@@ -126,11 +166,14 @@
 	  </table>
 	{% endif %}	
 
-	<h2>Check flight status</h2>
+</section>
+<hr style="height:3px;border-width:1px;color:black;background-color:black">
+<section>
+	<h4>Check flight status</h4>
 	<!-- flight status -->
 	<form action="/" method="POST" class="row g-3">
 		<div class="col-md-6">
-			<input type="text" name = "airline_name" class="form-control" placeholder="Airline_name" required>
+			<input type="text" name = "airline_name" class="form-control" placeholder="Airline name" required>
 		  </div>
 		<div class="col-md-6">
 			<input type="text" name = "flight_num" class="form-control" placeholder="Flight Number" required>
@@ -146,7 +189,7 @@
 		</div>
 		
 		<div class="col-12">
-			<button type="submit" class="btn btn-primary" value = Search>Search</button>
+			<button type="submit" class="btn btn-primary" value = Search><i class="bi bi-search" style="font-size: 1rem; color: white;"></i></button>
 		</div>
 		<div></div>
 		<div></div>
@@ -155,9 +198,13 @@
 		{% endif %}
 	</form>	
 
+</section>
+
+<section>
 	<!-- desplay search result -->
 	{% if search3 %}
-	<h3 style='margin-bottom: 10px; margin-top: 10px;'>Search result</h3>
+	<hr style="height:3px;border-width:1px;color:black;background-color:black">
+	<h4 style='margin-bottom: 10px; margin-top: 10px;'>Search result</h4>
 		<table class="table table-striped">
 			<thead>
 			<tr>
@@ -186,5 +233,5 @@
 		</table>
 	{% endif %}		
 
-   
+</section>
 {% endblock %}

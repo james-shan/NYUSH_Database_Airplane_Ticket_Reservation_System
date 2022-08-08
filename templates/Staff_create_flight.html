@@ -6,6 +6,7 @@
 <p></p>
 <div></div>
 
+{% if Admin_permission %}
 
     {% if error%}
         <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -54,5 +55,9 @@
 			</div>
 			<div></div>
 		</form>
+		
+{% else %}
+<h1>You do not have the permission!</h1>
+{% endif %}
 
 {% endblock %}

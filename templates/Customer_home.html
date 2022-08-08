@@ -64,6 +64,7 @@
     {% endif %}
 
     <!-- airport search -->
+    <hr style="height:3px;border-width:1px;color:black;background-color:black">
     <h3 style='margin-bottom: 10px; margin-top: 10px;'>Search by airport</h2>
         <form action="" method="POST" class="row g-3">
             <div class="col-md-6">
@@ -81,7 +82,7 @@
                 <input type="date" name = "return_date" class="form-control">
             </div>
             <div class="col-12">
-            <button type="submit" class="btn btn-primary" value = Search>Search</button>
+            <button type="submit" class="btn btn-primary" value = Search><i class="bi bi-search" style="font-size: 1rem; color: white;"></i></button>
             </div>
             <div></div>
         </form>
@@ -91,6 +92,7 @@
     </form>
 
     <!-- city search -->
+    <hr style="height:3px;border-width:1px;color:black;background-color:black">
     <h3 style='margin-bottom: 10px; margin-top: 10px;'>Search by city</h2>
         <form action="" method="POST" class="row g-3">
             <div class="col-md-6">
@@ -108,7 +110,7 @@
                 <input type="date" name = "return_date" class="form-control">
             </div>
             <div class="col-12">
-            <button type="submit" class="btn btn-primary" value = Search>Search</button>
+            <button type="submit" class="btn btn-primary" value = Search><i class="bi bi-search" style="font-size: 1rem; color: white;"></i></button>
             </div>
             <div></div>
         </form>
@@ -119,9 +121,8 @@
 
     <!-- desplay search result -->
         {% if cus_search1 %}
+        <hr style="height:3px;border-width:1px;color:black;background-color:black">
         <h3 style='margin-bottom: 10px; margin-top: 10px;'>Search result</h3>
-
-
         <table class="table table-striped">
             <thead>
             <tr>
@@ -160,6 +161,7 @@
 
     <!-- desplay search result -->
         {% if cus_search2 %}
+        <hr style="height:3px;border-width:1px;color:black;background-color:black">
         <table class="table table-striped">
             <thead>
             <tr>
@@ -188,7 +190,7 @@
                         <form method="POST" action="">
                             <input type="hidden" name="purchase_flight_num" value = "{{line['flight_num']}}">
                             <input type="hidden" name="purchase_airline_name" value = "{{line['airline_name']}}">
-                            <button type="submit" class="btn btn-outline-primary btn-sm">Purchase</button>
+                            <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-bag-check-fill" style="font-size: 1rem; color: white;"></i>/button>
                         </form>
                     </td>
                 </tr>
